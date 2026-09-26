@@ -1,8 +1,19 @@
 # ⚡ AgentMarket
 
-**Autonomous machine-to-machine payments for AI agents, powered by x402 on Monad.**
+**An autonomous capability marketplace where AI agents discover, evaluate, select, and pay for services using x402 on Monad.**
 
-AgentMarket is a prototype marketplace where an AI agent can discover a paid service, evaluate its price against a spending budget, autonomously pay for access using the **x402 HTTP payment protocol**, and consume the purchased result.
+AgentMarket is a prototype marketplace for machine-to-machine commerce.
+
+Instead of requiring a human to create accounts, manage subscriptions, purchase credits, and configure API keys, an autonomous agent can:
+
+1. discover available capabilities;
+2. evaluate services against its task;
+3. compare relevance, price, and availability;
+4. enforce a spending budget;
+5. select an appropriate service;
+6. encounter an HTTP `402 Payment Required`;
+7. autonomously authorize an x402 payment;
+8. receive the purchased capability after settlement.
 
 Built at **Monad Blitz Berlin**.
 
@@ -10,144 +21,310 @@ Built at **Monad Blitz Berlin**.
 
 ## The Idea
 
-AI agents can call APIs, use tools, and interact with other agents — but most APIs still assume that a human created an account, entered billing information, purchased credits, and generated an API key.
+AI agents can call APIs, use tools, and interact with other agents, but access to paid capabilities is still usually designed around humans.
+
+A developer normally needs to:
+
+```text
+Create account
+      ↓
+Add billing method
+      ↓
+Buy credits / subscription
+      ↓
+Generate API key
+      ↓
+Give API key to agent
+```
 
 AgentMarket explores a different model:
 
-> **What if an agent could discover a service and pay another service directly?**
+> **What if capabilities could advertise a price, and autonomous agents could decide what is worth buying?**
 
-Instead of requiring subscriptions or pre-funded platform credits, a service can respond with:
+With AgentMarket:
 
-```http
-HTTP/1.1 402 Payment Required
+```text
+Task
+  ↓
+Discover marketplace
+  ↓
+Evaluate capabilities
+  ↓
+Select service
+  ↓
+HTTP 402 Payment Required
+  ↓
+x402 payment
+  ↓
+Monad settlement
+  ↓
+Capability unlocked
 ```
 
-The agent evaluates the payment requirement against its budget, authorizes an x402 payment, and retries the request.
-
-Once settlement succeeds, the service returns the purchased resource.
+The payment becomes part of the machine-to-machine protocol rather than a separate human checkout flow.
 
 ---
 
-## Demo Flow
+## What Makes AgentMarket Different?
+
+x402 provides the payment primitive.
+
+AgentMarket experiments with the **economic decision layer above that primitive**.
+
+The agent does not simply pay a predefined API.
+
+It first asks:
 
 ```text
-User
- │
- │ "Research ETH market sentiment"
- │ Budget: $0.01
- ▼
-┌──────────────────────────────┐
-│       Python Agent           │
-│                              │
-│ Discover service             │
-│ Check price                  │
-│ Enforce spending budget      │
-└──────────────┬───────────────┘
-               │
-               │ GET /api/research
-               ▼
-┌──────────────────────────────┐
-│    Paid Research Service     │
-│                              │
-│ HTTP 402 Payment Required    │
-│ Price: $0.001 USDC           │
-└──────────────┬───────────────┘
-               │
-               ▼
-┌──────────────────────────────┐
-│        x402 Payer            │
-│                              │
-│ Sign payment authorization   │
-│ Pay $0.001 USDC              │
-└──────────────┬───────────────┘
-               │
-               ▼
-          Monad Testnet
-               │
-               │ Payment settled
-               ▼
-┌──────────────────────────────┐
-│    Paid Research Service     │
-│                              │
-│ HTTP 200                     │
-│ Purchased result returned    │
-└──────────────┬───────────────┘
-               │
-               ▼
-         Python Agent
-               │
-               ▼
-        Result displayed
+Which services are available?
+
+Which ones are relevant to my task?
+
+Which ones are actually live?
+
+Which ones fit my budget?
+
+Which suitable service should I purchase?
 ```
 
-Example:
+Only after making those decisions does it authorize a payment.
+
+This turns:
 
 ```text
-=== AgentMarket ===
-Task: Research ETH market sentiment
-Budget: $0.01
+Agent → Paid API
+```
 
-[DISCOVER] research-agent costs $0.001 USDC
-[DECIDE] Purchase approved. $0.001 <= $0.01
-[PAY] Executing x402 payment on Monad...
-[PAID] Payment successful.
-[RECEIVE] Purchased result from research-agent
+into:
 
-=== Purchased Intelligence ===
+```text
+Agent
+  ↓
+Capability Marketplace
+  ↓
+Discovery
+  ↓
+Evaluation
+  ↓
+Economic Decision
+  ↓
+Service Selection
+  ↓
+x402 Payment
+  ↓
+Purchased Capability
+```
+
+---
+
+## Live Demo
+
+Example task:
+
+```text
+Research ETH market sentiment
+```
+
+Agent budget:
+
+```text
+0.010 USDC
+```
+
+AgentMarket currently exposes a marketplace containing:
+
+| Service | Capability | Price | Status |
+|---|---|---:|---|
+| Quick Research Agent | Market sentiment | 0.001 USDC | 🟢 Live x402 service |
+| Risk Analysis Agent | Risk analysis | 0.002 USDC | ⚪ Marketplace listing |
+| Deep Research Agent | Detailed research | 0.003 USDC | ⚪ Marketplace listing |
+
+The agent evaluates the marketplace:
+
+```text
+[DISCOVER]
+
+3 marketplace services discovered.
+
+        ↓
+
+[EVALUATE]
+
+Quick Research Agent
+Price:     0.001 USDC
+Relevance: High
+Status:    Candidate
+
+Risk Analysis Agent
+Price:     0.002 USDC
+Relevance: Lower
+Status:    Listed / unavailable
+
+Deep Research Agent
+Price:     0.003 USDC
+Relevance: Lower
+Status:    Listed / unavailable
+
+        ↓
+
+[SELECT]
+
+Quick Research Agent
+Price: 0.001 USDC
+
+        ↓
+
+[REQUEST]
+
+GET /api/research
+
+        ↓
+
+HTTP 402 Payment Required
+
+        ↓
+
+[PAY]
+
+0.001 USDC via x402 on Monad
+
+        ↓
+
+[SETTLE]
+
+Payment verified and settled
+
+        ↓
+
+[UNLOCK]
+
+HTTP 200
+
+        ↓
+
+Purchased intelligence
+```
+
+Example purchased result:
+
+```text
 Asset:      ETH
-Sentiment:  bullish
-Confidence: 0.82
+Sentiment:  Bullish
+Confidence: 82%
 
-Spent:      $0.001 USDC
-Remaining:  $0.009
+Selected:   Quick Research Agent
+Spent:      0.001 USDC
+Budget:     0.010 USDC
+Remaining:  0.009 USDC
 Network:    eip155:10143
 ```
 
 ---
 
-## Why x402?
+## Autonomous Spending Constraints
 
-HTTP has had a status code for payments for decades:
+AgentMarket does not equate autonomous payments with unrestricted payments.
 
-```text
-402 Payment Required
-```
-
-x402 turns that status code into a machine-readable payment protocol.
-
-This makes it possible for software agents to:
-
-- encounter a paid resource;
-- understand its payment requirements;
-- authorize payment programmatically;
-- retry the request with payment;
-- receive the resource without a human checkout flow.
-
-AgentMarket uses this mechanism for **agent-to-service payments**.
-
----
-
-## Why Monad?
-
-Machine-to-machine payments benefit from infrastructure designed for fast and inexpensive execution.
-
-AgentMarket currently uses:
+For example, with:
 
 ```text
-Network: Monad Testnet
-Chain ID: 10143
-CAIP-2:   eip155:10143
-Payment:  USDC
-Protocol: x402
+Budget: 0.000 USDC
 ```
 
-The project uses the Monad x402 facilitator for payment verification and settlement.
+the same marketplace evaluation produces:
+
+```text
+Quick Research Agent  → Over budget
+Risk Analysis Agent   → Over budget
+Deep Research Agent   → Over budget
+
+        ↓
+
+No suitable service fits the task and spending budget.
+
+        ↓
+
+NO PAYMENT
+```
+
+This demonstrates an important property of autonomous commerce:
+
+> **The agent can decide not to transact.**
 
 ---
 
 ## Architecture
 
-AgentMarket deliberately keeps the architecture small.
+```text
+                         ┌──────────────────────┐
+                         │        User          │
+                         │ Task + max budget    │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │     Python Agent     │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                    ┌──────────────────────────────┐
+                    │    Agent Service Marketplace │
+                    │                              │
+                    │ Quick Research    $0.001     │
+                    │ Risk Analysis     $0.002     │
+                    │ Deep Research     $0.003     │
+                    └──────────────┬───────────────┘
+                                   │
+                         evaluate + select
+                                   │
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │   Quick Research selected    │
+                    │         $0.001 USDC          │
+                    └──────────────┬───────────────┘
+                                   │
+                                   │ GET /api/research
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │    Public Paid Service       │
+                    │                              │
+                    │  HTTP 402 Payment Required   │
+                    └──────────────┬───────────────┘
+                                   │
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │        x402 Payer            │
+                    │                              │
+                    │ Spending controls            │
+                    │ Wallet authorization         │
+                    └──────────────┬───────────────┘
+                                   │
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │        Monad Testnet         │
+                    │          USDC                │
+                    └──────────────┬───────────────┘
+                                   │
+                             settlement
+                                   │
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │    Public Paid Service       │
+                    │                              │
+                    │ HTTP 200 + purchased result  │
+                    └──────────────┬───────────────┘
+                                   │
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │        Python Agent          │
+                    │                              │
+                    │ Result + economics           │
+                    └──────────────────────────────┘
+```
+
+---
+
+## Repository Structure
 
 ```text
 agentmarket/
@@ -155,12 +332,14 @@ agentmarket/
 ├── agent/
 │   ├── agent.py
 │   ├── app.py
+│   ├── marketplace.py
 │   └── requirements.txt
 │
 ├── payer/
 │   ├── src/
 │   │   └── pay.ts
 │   ├── package.json
+│   ├── package-lock.json
 │   ├── tsconfig.json
 │   └── .env.example
 │
@@ -169,81 +348,229 @@ agentmarket/
 │       ├── src/
 │       │   └── server.ts
 │       ├── package.json
+│       ├── package-lock.json
 │       ├── tsconfig.json
 │       └── .env.example
 │
+├── Dockerfile
 ├── .gitignore
 └── README.md
 ```
 
-### `agent/`
+---
 
-The Python orchestration layer.
+## Components
 
-It is responsible for:
+### `agent/marketplace.py`
 
-- receiving the task;
-- maintaining the spending budget;
-- evaluating whether a service is affordable;
-- invoking the x402 payment adapter;
-- consuming the purchased response.
+Defines the marketplace and autonomous service-selection policy.
 
-`app.py` provides the Streamlit demo interface.
+Each marketplace service describes properties such as:
+
+```text
+ID
+Name
+Capability
+Description
+Price
+Keywords
+Availability
+```
+
+The current selection policy:
+
+1. compares the task with service capabilities;
+2. calculates deterministic relevance;
+3. filters services that do not fit the budget;
+4. filters services that are not currently purchasable;
+5. selects the highest-relevance suitable service;
+6. uses price as a tie-breaker.
+
+The deterministic policy keeps the hackathon prototype inspectable and reproducible.
+
+It can later be replaced or supplemented with an LLM planner, semantic search, reputation system, auction mechanism, or another agent policy.
+
+---
+
+### `agent/app.py`
+
+The Streamlit application and primary demo interface.
+
+It coordinates:
+
+```text
+Task input
+    ↓
+Marketplace discovery
+    ↓
+Service evaluation
+    ↓
+Budget enforcement
+    ↓
+Service selection
+    ↓
+x402 purchase
+    ↓
+Purchased result
+    ↓
+Agent economics
+```
+
+It also validates that the amount reported by the payment adapter matches the price of the service selected by the marketplace.
+
+---
+
+### `agent/agent.py`
+
+A command-line version of the agent workflow.
+
+It demonstrates the payment orchestration independently of the Streamlit interface.
+
+---
 
 ### `payer/`
 
-The x402 payment adapter.
+The TypeScript x402 payment adapter.
 
 It is responsible for:
 
-- managing the agent's wallet signer;
-- handling the HTTP 402 challenge;
+- managing the agent wallet signer;
+- handling the HTTP 402 payment challenge;
 - creating the x402 payment authorization;
-- enforcing allowed assets and maximum payment amounts;
-- retrying the protected request after payment.
+- restricting permitted payment assets;
+- enforcing maximum payment amounts;
+- retrying the protected request with payment;
+- returning a machine-readable result to Python.
 
-The wallet private key stays server-side and is never exposed to the UI.
+The private key stays server-side and is never sent to the browser.
+
+---
 
 ### `services/api/`
 
 The paid resource server.
 
-It exposes a protected endpoint:
+It exposes:
+
+```http
+GET /health
+```
+
+and the protected resource:
 
 ```http
 GET /api/research
 ```
 
-Without payment, the endpoint responds with an x402 payment requirement.
+Without valid payment:
 
-After a valid payment is settled, it returns the purchased resource.
+```text
+HTTP 402 Payment Required
+```
+
+After successful x402 verification and settlement:
+
+```text
+HTTP 200
+```
+
+with the purchased resource.
+
+---
+
+## Why x402?
+
+HTTP already defines:
+
+```text
+402 Payment Required
+```
+
+x402 turns that concept into a machine-readable payment flow.
+
+A software agent can:
+
+```text
+Request resource
+      ↓
+Receive payment requirements
+      ↓
+Authorize payment
+      ↓
+Retry request with payment
+      ↓
+Receive resource
+```
+
+This enables machine-to-machine commerce without requiring a human checkout interaction for every purchase.
+
+AgentMarket builds marketplace discovery and autonomous economic decision-making on top of that payment primitive.
+
+---
+
+## Why Monad?
+
+AgentMarket currently uses:
+
+```text
+Network:  Monad Testnet
+Chain ID: 10143
+CAIP-2:   eip155:10143
+Asset:    USDC
+Protocol: x402
+```
+
+The prototype uses the Monad x402 facilitator for payment verification and settlement.
 
 ---
 
 ## Spending Controls
 
-Autonomous payments should not mean unlimited payments.
+Autonomous payment systems need controls below the reasoning layer.
 
-AgentMarket uses two layers of spending protection.
+AgentMarket therefore uses multiple boundaries.
 
-### Agent budget
+### 1. Task budget
 
-The Python agent refuses purchases that exceed its current task budget.
+The Python agent receives a maximum spending budget.
 
-For example:
+A service exceeding that budget is rejected before payment.
+
+### 2. Marketplace availability
+
+A listed service is not automatically considered purchasable.
+
+Only services explicitly marked as live can become payment candidates.
+
+### 3. x402 payer controls
+
+The TypeScript payment layer restricts permitted network/assets and enforces payment limits independently of the Python decision layer.
+
+### 4. Price consistency
+
+After payment, the Python application verifies that:
 
 ```text
-Budget: $0.000
-Service: $0.001
-
-→ Purchase refused
+amount paid == selected marketplace price
 ```
 
-### x402 payer controls
+This provides another check between marketplace decision-making and payment execution.
 
-The payment adapter also restricts which token and network can be used and limits the maximum amount that can be authorized per payment.
+---
 
-This provides a second enforcement boundary below the agent's decision layer.
+## Current Marketplace Status
+
+The current hackathon prototype contains three marketplace listings.
+
+Only **Quick Research Agent** currently has a live x402-backed implementation.
+
+The other services demonstrate capability discovery and marketplace evaluation but are deliberately marked unavailable.
+
+This is intentional.
+
+The project does **not** pretend that placeholder marketplace listings are deployed paid services.
+
+The next logical evolution is allowing independent providers to register their own live x402 endpoints.
 
 ---
 
@@ -255,15 +582,17 @@ Install:
 - Node.js 20+
 - npm
 - Git
-- an EVM-compatible wallet
+- an EVM-compatible development wallet
 - Monad Testnet funds
 - Monad Testnet USDC
+
+Use a dedicated development wallet with limited funds.
 
 ---
 
 ## Local Setup
 
-### 1. Clone the repository
+### 1. Clone
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/agentmarket.git
@@ -281,45 +610,45 @@ cd services/api
 npm install
 ```
 
-Create `.env` from the example:
+Create the environment file.
+
+macOS/Linux:
 
 ```bash
 cp .env.example .env
 ```
 
-On Windows PowerShell:
+Windows PowerShell:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Set:
+Configure:
 
 ```env
 PAY_TO_ADDRESS=0xYOUR_RECEIVER_WALLET_ADDRESS
 ```
 
-This is the wallet that receives payments.
-
-Start the API:
+Start:
 
 ```bash
 npm start
 ```
 
-The default local server is:
+By default:
 
 ```text
 http://localhost:4021
 ```
 
-Check:
+Health check:
 
 ```text
 GET http://localhost:4021/health
 ```
 
-Expected response:
+Expected:
 
 ```json
 {
@@ -328,30 +657,28 @@ Expected response:
 }
 ```
 
-The protected endpoint is:
+The protected endpoint:
 
 ```text
 GET http://localhost:4021/api/research
 ```
 
-An unpaid request should return:
-
-```text
-402 Payment Required
-```
+should return an x402 payment requirement when called without payment.
 
 ---
 
-### 3. Configure the x402 payer
+### 3. Configure the payer
 
-Open another terminal:
+In another terminal:
 
 ```bash
 cd payer
 npm install
 ```
 
-Create the local environment file:
+Create `.env`.
+
+macOS/Linux:
 
 ```bash
 cp .env.example .env
@@ -366,15 +693,13 @@ Copy-Item .env.example .env
 Configure:
 
 ```env
-PRIVATE_KEY=0xYOUR_AGENT_WALLET_PRIVATE_KEY
+PRIVATE_KEY=0xYOUR_DEVELOPMENT_WALLET_PRIVATE_KEY
 AGENTMARKET_API_URL=http://localhost:4021/api/research
 ```
 
-Use a dedicated development wallet containing only the funds required for testing.
+Never commit this file.
 
-**Never commit this `.env` file or your private key.**
-
-Test the payer:
+Test:
 
 ```bash
 npm run start --silent
@@ -401,55 +726,49 @@ A successful invocation returns machine-readable JSON similar to:
 }
 ```
 
-> Running the payer performs an actual testnet payment.
+> This command performs an actual Monad Testnet payment.
 
 ---
 
-### 4. Run the Python agent
-
-From the project root:
+### 4. Configure Python
 
 ```bash
 cd agent
-```
-
-Create a virtual environment:
-
-```bash
 python -m venv .venv
 ```
 
-Activate it on Windows:
+Windows:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-On macOS/Linux:
+macOS/Linux:
 
 ```bash
 source .venv/bin/activate
 ```
 
-Install dependencies:
+Install:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Run:
+---
+
+## Run the Command-Line Agent
 
 ```bash
+cd agent
 python agent.py
 ```
 
-The agent evaluates the service price against its budget and purchases the resource when allowed.
-
 ---
 
-## Run the Demo UI
+## Run the Marketplace UI
 
-Make sure the paid API is running first.
+Make sure the paid API is running and the payer environment is configured.
 
 Then:
 
@@ -460,39 +779,65 @@ streamlit run app.py
 
 Open the URL printed by Streamlit.
 
-Try two budgets.
+### Test 1 — economic refusal
 
-### Refused purchase
+Task:
 
 ```text
-Budget: 0.000 USDC
+Research ETH market sentiment
 ```
 
-The agent should refuse the purchase without spending funds.
-
-### Approved purchase
+Budget:
 
 ```text
-Budget: 0.010 USDC
+0.000 USDC
 ```
 
-The agent should:
+Expected:
 
 ```text
-Discover service
-      ↓
-Check budget
-      ↓
-Receive HTTP 402
-      ↓
-Pay $0.001 USDC via x402
-      ↓
+3 marketplace services discovered
+
+Quick Research Agent → Over budget
+Risk Analysis Agent  → Over budget
+Deep Research Agent  → Over budget
+
+No suitable service matches the task and spending budget.
+
+NO PAYMENT
+```
+
+### Test 2 — autonomous purchase
+
+Budget:
+
+```text
+0.010 USDC
+```
+
+Expected:
+
+```text
+Discover 3 services
+       ↓
+Evaluate relevance + price + availability
+       ↓
+Select Quick Research Agent
+       ↓
+HTTP 402 Payment Required
+       ↓
+Pay 0.001 USDC via x402
+       ↓
+Monad settlement
+       ↓
 Unlock service
-      ↓
-Display purchased result
+       ↓
+ETH / Bullish / 82%
+       ↓
+Remaining budget: 0.009 USDC
 ```
 
-> The approved path performs a real Monad Testnet USDC payment.
+> The successful path performs a real Monad Testnet USDC payment.
 
 ---
 
@@ -506,7 +851,7 @@ Display purchased result
 PAY_TO_ADDRESS=0x...
 ```
 
-### Payer
+### Agent / payer
 
 `payer/.env`
 
@@ -515,94 +860,200 @@ PRIVATE_KEY=0x...
 AGENTMARKET_API_URL=http://localhost:4021/api/research
 ```
 
-`.env` files are intentionally excluded from Git.
+For deployment, configure these through the hosting provider's environment-variable or secret-management interface rather than committing them to Git.
 
-Only `.env.example` files should be committed.
+---
+
+## Deployment Architecture
+
+The hackathon deployment separates the public UI from the paid service.
+
+```text
+Public AgentMarket UI
+Python + Streamlit
+        │
+        │ service selection
+        ▼
+x402 payer
+        │
+        │ Internet
+        ▼
+Public Paid API
+        │
+        ├── 402 Payment Required
+        │
+        ▼
+x402 / Monad
+        │
+        │ settlement
+        ▼
+Public Paid API
+        │
+        └── 200 + resource
+        ▼
+AgentMarket UI
+```
+
+The repository includes a root `Dockerfile` for deploying the mixed Python + Node agent application.
+
+Runtime secrets are injected through deployment environment variables.
 
 ---
 
 ## Security
 
-This repository is a hackathon prototype and should not be treated as production payment infrastructure.
+This is a hackathon prototype, not production payment infrastructure.
 
 If you reuse it:
 
-1. Use a dedicated wallet with limited funds.
-2. Never expose private keys to the browser.
+1. Use a dedicated wallet containing limited funds.
+2. Never expose private keys in the browser.
 3. Never commit `.env` files.
-4. Enforce payment limits independently of agent reasoning.
-5. Restrict permitted networks and assets.
-6. Validate all payment requirements before signing.
-7. Add authentication/rate limiting before exposing privileged payment operations.
-8. Use a proper secret manager in production.
+4. Keep payment authorization server-side.
+5. Enforce spending limits independently of agent reasoning.
+6. Restrict permitted networks and assets.
+7. Validate payment requirements before signing.
+8. Verify paid amounts against marketplace expectations.
+9. Add authentication and rate limiting before exposing privileged payment operations.
+10. Use a production secret manager for real funds.
 
 ---
 
 ## Current Prototype Scope
 
-The project currently focuses on proving the payment primitive:
+The prototype focuses on the economic and payment primitive:
 
 ```text
-agent
-  → discovers service
-  → makes economic decision
-  → encounters HTTP 402
-  → pays autonomously
-  → receives purchased resource
+Agent
+  ↓
+Discover capabilities
+  ↓
+Evaluate competing services
+  ↓
+Apply economic constraints
+  ↓
+Select capability
+  ↓
+Encounter HTTP 402
+  ↓
+Pay autonomously
+  ↓
+Receive purchased resource
 ```
 
-The research response used by the hackathon prototype is intentionally simple/static. The core experiment is the **autonomous x402 payment flow**, not the quality of the research model.
+The current research response is intentionally simple/static.
 
-This distinction is important if you build on the project: replace the example research endpoint with any useful paid capability, such as:
+The innovation being demonstrated is **autonomous capability discovery, economic selection, and machine-to-machine payment**, rather than the sophistication of the research model itself.
+
+The same architecture could be used for:
 
 - model inference;
-- data retrieval;
+- proprietary datasets;
 - specialized research;
 - image generation;
 - compute jobs;
+- storage;
 - agent tools;
-- API calls;
-- other agent services.
+- external APIs;
+- other autonomous agents.
 
-The payment architecture remains the same.
+---
+
+## Extending the Marketplace
+
+A natural next step is allowing independent providers to register capabilities such as:
+
+```json
+{
+  "name": "Weather Intelligence Agent",
+  "capability": "weather-analysis",
+  "endpoint": "https://provider.example/api/weather",
+  "price": "0.002",
+  "network": "eip155:10143"
+}
+```
+
+The marketplace could then evolve toward:
+
+```text
+Provider registration
+        ↓
+Capability discovery
+        ↓
+Semantic matching
+        ↓
+Price comparison
+        ↓
+Reputation / quality signals
+        ↓
+Agent selection
+        ↓
+x402 purchase
+```
+
+Possible future mechanisms include:
+
+- dynamic service registration;
+- multiple live providers;
+- semantic capability matching;
+- provider reputation;
+- service quality history;
+- competitive pricing;
+- bidding;
+- auctions;
+- agent-to-agent negotiation.
+
+These are future directions, not features claimed by the current prototype.
 
 ---
 
 ## Reusing AgentMarket
 
-To turn the prototype into another paid service:
+To add another real paid capability:
 
-1. Replace or extend the protected resource in `services/api`.
-2. Set the service's x402 price.
-3. Configure the receiver wallet.
-4. Point the payer at the protected endpoint.
-5. Configure the payer's allowed asset and spending limits.
-6. Let the agent decide when purchasing the capability is worthwhile.
+1. implement the capability endpoint;
+2. protect it with x402;
+3. configure its payment recipient and price;
+4. register the service in the marketplace;
+5. mark it purchasable only when the endpoint is actually live;
+6. configure the payer's allowed assets and limits;
+7. extend the payment adapter if different endpoints require dynamic routing.
 
-The key abstraction is:
+The core abstraction is:
 
 ```text
-Capability + Price + HTTP 402
-              ↓
-        Agent Decision
-              ↓
-         x402 Payment
-              ↓
-       Capability Result
+Capability
+    +
+Price
+    +
+Availability
+    +
+Payment Requirement
+        ↓
+Agent Evaluation
+        ↓
+Economic Decision
+        ↓
+Service Selection
+        ↓
+x402 Payment
+        ↓
+Capability Result
 ```
 
 ---
 
 ## Tech Stack
 
-- **Python** — agent orchestration
-- **Streamlit** — demo interface
-- **TypeScript / Node.js** — payment and service infrastructure
-- **Express** — paid API
-- **x402** — HTTP-native payment protocol
+- **Python** — agent orchestration and marketplace policy
+- **Streamlit** — interactive marketplace/demo UI
+- **TypeScript / Node.js** — x402 payment adapter and service infrastructure
+- **Express** — paid resource API
+- **x402** — HTTP-native machine payment protocol
 - **viem** — EVM account/signing utilities
 - **Monad Testnet** — settlement network
 - **USDC** — payment asset
+- **Docker** — mixed Python/Node deployment
 
 ---
 
@@ -610,12 +1061,14 @@ Capability + Price + HTTP 402
 
 Built during **Monad Blitz Berlin**.
 
-The prototype explores machine-to-machine commerce where software agents can independently purchase capabilities instead of relying on human-managed subscriptions and API credits.
+AgentMarket explores a future where software doesn't merely call software:
+
+> **Software can discover capabilities, evaluate their economics, and buy services from software.**
 
 ---
 
 ## License
 
-This project does not currently include a license.
+No license is currently included.
 
-If you intend others to freely reuse and modify the repository, add an explicit open-source license before publishing it. MIT is a common choice for hackathon projects.
+If you want others to freely use, modify, and redistribute AgentMarket, add an explicit open-source license such as MIT.

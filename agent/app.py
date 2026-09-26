@@ -5,6 +5,7 @@ import subprocess
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
+import os
 
 import streamlit as st
 
@@ -18,8 +19,10 @@ SERVICE_PRICE = Decimal("0.001")
 def purchase_service() -> dict[str, Any]:
     """Execute the proven x402 payment adapter."""
 
+    npm_command = "npm.cmd" if os.name == "nt" else "npm"
+
     completed = subprocess.run(
-        ["npm.cmd", "run", "start", "--silent"],
+        [npm_command, "run", "start", "--silent"],
         cwd=PAYER_DIR,
         capture_output=True,
         text=True,

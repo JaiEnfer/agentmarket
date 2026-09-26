@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import os
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
@@ -31,8 +32,10 @@ class AgentMarketError(RuntimeError):
 def purchase_research() -> PurchaseResult:
     """Purchase research through the existing x402 payment adapter."""
 
+    npm_command = "npm.cmd" if os.name == "nt" else "npm"
+
     completed = subprocess.run(
-        ["npm.cmd", "run", "start", "--silent"],
+        [npm_command, "run", "start", "--silent"],
         cwd=PAYER_DIR,
         capture_output=True,
         text=True,
